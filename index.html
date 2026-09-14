@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cierre Operacional Diario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0e12;--panel:#12171d;--panel2:#171d25;--panel3:#1d242d;--line:#232b35;--line2:#2e3846;--ink:#e7edf4;--ink2:#8f9bab;--ink3:#5f6b7a;--ok:#3fb27f;--warn:#e2a72c;--bad:#e0584a;--accent:#5b9dff;--shadow:0 1px 0 rgba(255,255,255,.03) inset;--pad:12px}
+:root[data-theme="light"]{--bg:#f2f0ec;--panel:#ffffff;--panel2:#fbfaf8;--panel3:#f2f0ec;--line:#e3ded5;--line2:#d3cdc2;--ink:#14171c;--ink2:#5d6472;--ink3:#8b93a1;--ok:#1f8a5f;--warn:#b47d0a;--bad:#c4392c;--accent:#2a63c9;--shadow:none}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{color:var(--ink)}
+input,select,button{font-family:inherit}
+button{cursor:pointer}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.mono{font-family:"IBM Plex Mono",monospace}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:9px}
+.hd{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2);font:600 12.5px 'IBM Plex Sans',sans-serif}
+h2{margin:0;font:600 12.5px 'IBM Plex Sans',sans-serif}
+.tab-btn{appearance:none;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--ink3);padding:9px 13px 10px;cursor:pointer;font:600 11.5px 'IBM Plex Sans',sans-serif;letter-spacing:.1px;white-space:nowrap}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.on{color:var(--ink);border-bottom-color:var(--accent)}
+.lbl{font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.7px;text-transform:uppercase;color:var(--ink3)}
+table{width:100%;border-collapse:collapse;font:400 12px 'IBM Plex Sans',sans-serif}
+th{text-align:left;padding:9px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.6px;text-transform:uppercase;color:var(--ink3);background:var(--panel2)}
+td{padding:10px;border-bottom:1px solid var(--line)}
+tr:hover td{background:var(--panel2)}
+.inp{background:var(--panel3);border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:6px 8px;font:400 11.5px 'IBM Plex Mono',monospace}
+.btn{height:34px;padding:0 14px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--ink2);font:600 11.5px 'IBM Plex Sans',sans-serif}
+.btn:hover{color:var(--ink);border-color:var(--line2)}
+.btn.pri{border:0;background:var(--accent);color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.4px;text-transform:uppercase}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div style="min-height:100vh;padding:0 0 56px">
+
+  <header style="position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:0 20px">
+    <div style="display:flex;align-items:center;gap:18px;height:56px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <div style="width:26px;height:26px;border-radius:6px;background:var(--accent);display:grid;place-items:center;font:700 12px 'IBM Plex Mono',monospace;color:#fff;flex:none">CO</div>
+        <div style="min-width:0">
+          <div style="font:600 13px/1.1 'IBM Plex Sans',sans-serif;letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cierre Operacional Diario</div>
+          <div style="font:400 10px/1.4 'IBM Plex Mono',monospace;color:var(--ink3);letter-spacing:.4px;text-transform:uppercase">Tablero ejecutivo · BI de proceso</div>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2.4s ease-in-out infinite"></span>
+        <span class="mono" style="font-size:10.5px;font-weight:500;color:var(--ink2);letter-spacing:.3px">SYNC <span id="sync">—</span></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:4px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)">
+        <span class="mono" style="font-size:10.5px;font-weight:500;color:var(--ink3);padding-left:6px">FECHA</span>
+        <span class="mono" id="fecha" style="font-size:11.5px;font-weight:600;color:var(--ink);padding-right:6px">—</span>
+      </div>
+      <button id="themeBtn" class="btn mono" style="height:30px;padding:0 11px;background:var(--panel2)">TEMA · OSCURO</button>
+    </div>
+    <nav id="tabs" style="display:flex;gap:2px;align-items:flex-end;margin-bottom:-1px"></nav>
+  </header>
+
+  <div style="padding:var(--pad) 20px 0;display:flex;flex-direction:column;gap:var(--pad)">
+    <div id="err" class="hidden panel" style="border-left:3px solid var(--bad);padding:12px 16px;color:var(--bad);font:500 12px 'IBM Plex Sans'"></div>
+
+    <section id="tab-resumen"></section>
+    <section id="tab-tend" class="hidden"></section>
+    <section id="tab-heat" class="hidden"></section>
+    <section id="tab-crono" class="hidden"></section>
+    <section id="tab-areas" class="hidden"></section>
+    <section id="tab-config" class="hidden"></section>
+  </div>
+</div>
+
+<script>
+// ===== Estado y helpers de presentación (fieles al diseño de referencia) =====
+// STATIC_MODE: build publicado en GitHub Pages (sin backend detrás) -- los datos ya
+// vienen embebidos en EMBEDDED_DATA, no hay fetch ni ninguna acción que escriba nada.
+const STATIC_MODE = true;
+const EMBEDDED_DATA = {"config": {"titulo": "Cierre Operacional Diario", "subtitulo": "Tablero ejecutivo · BI de proceso", "buzon": "", "carpeta": "", "intervalo_min": 15, "ventana": ["16:30", "20:30"], "retencion_dias": 540, "umbral_riesgo_min": 15, "ventana_tendencia": 20, "excluir_finde": true, "toggles": {"hallazgos": true, "alerta": false, "festivos": true, "publicar": false}}, "maestra_hitos": {"procesos": {"cierre_diario": {"hitos": [{"area": "CP", "corto": "Modelo", "dur_meta_min": 30, "id": "h01", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "17:20", "nombre": "Modelo", "orden": 1, "origen": "inicio", "tol_min": 5}, {"area": "Supply Chain", "corto": "Preventa", "dur_meta_min": 15, "id": "h02", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "17:46", "nombre": "Preventa", "orden": 2, "origen": "horario", "origen_horario": {"sabado_festivo": "14:00", "semana": "17:30"}, "tol_min": 10}, {"area": "CP", "corto": "Rebajas", "dur_meta_min": 15, "id": "h03", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "17:55", "nombre": "Rebajas productivas", "orden": 3, "origen": "h02", "tol_min": 5}, {"area": "CP", "corto": "Pre-secuencia", "dur_meta_min": 30, "id": "h04", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "18:15", "nombre": "Pre-secuencia ajustada", "orden": 4, "origen": "h03", "tol_min": 15}, {"area": "Distribución", "corto": "Ruteo", "dur_meta_min": 120, "id": "h05", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "19:45", "nombre": "Ruteo", "orden": 5, "origen": "h04", "tol_min": 15}, {"area": "Distribución", "corto": "Planif. camiones", "dur_meta_min": 150, "id": "h06", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "20:00", "nombre": "Planificación de camiones", "orden": 6, "origen": "h04", "tol_min": 15}, {"area": "", "corto": "Pend. 7", "dur_meta_min": null, "id": "h07", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "", "nombre": "(Por definir) — a partir de Ruteo", "orden": 7, "origen": "h05", "tol_min": null}, {"area": "", "corto": "Pend. 8", "dur_meta_min": null, "id": "h08", "identificacion": {"carpeta": "", "remitentes": [], "asunto_contiene": "", "seleccion_dia": "ultimo", "timestamp": "recepcion", "nota": ""}, "meta": "", "nombre": "(Por definir) — a partir de Planif. de camiones", "orden": 8, "origen": "h06", "tol_min": null}], "inicio": "17:00", "meta_cierre": "21:00", "nombre": "Cierre Operacional Diario", "sla_min": 240}}}, "maestra_areas": {"areas": {"CP": {"color": "#5b7fa6"}, "Supply Chain": {"color": "#6b9080"}, "Distribución": {"color": "#b08d57"}}}, "maestra_festivos": {"fechas": ["2026-09-13"]}, "indicadores": {"generado": "2026-09-14T11:48:01", "proceso_id": "cierre_diario", "proceso": {"nombre": "Cierre Operacional Diario", "inicio": "17:00", "meta_cierre": "21:00", "sla_min": 240}, "hoy": "2026-09-14", "hoy_fmt": "14/09/2026", "meta": {"dias_serie": ["2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14"], "dias_dow": ["Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun"], "ventana": 20}, "kpis": [{"label": "Cierre efectivo", "value": "—", "delta": "—", "foot": "meta 21:00", "estado": "sin"}, {"label": "Duración total", "value": "—", "delta": "—", "foot": "objetivo 4h 00m punta a punta", "estado": "sin"}, {"label": "Cumplimiento SLA", "value": "—", "delta": "", "foot": "todavía sin hitos con dato hoy", "estado": "accent"}, {"label": "Hitos fuera de SLA", "value": "0", "delta": "", "foot": "sin hitos fuera de tolerancia", "estado": "accent"}, {"label": "Tiempo muerto", "value": "—", "delta": "", "foot": "espera entre hitos sin actividad registrada", "estado": "accent"}], "bottleneck": null, "timeline": {"inicio": "17:00", "cierre": "—", "segs": []}, "hitos": [{"n": "01", "id": "h01", "nombre": "Modelo", "corto": "Modelo", "area": "CP", "serie": "#5b7fa6", "origen": "inicio", "origen_nombre": "Inicio del proceso", "meta": "17:20", "tol": 5, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 30, "dur_meta": "30m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 44.07692307692308, "prom": "44m", "estado": "sin"}, {"n": "02", "id": "h02", "nombre": "Preventa", "corto": "Preventa", "area": "Supply Chain", "serie": "#6b9080", "origen": "horario", "origen_nombre": "Horario · 17:30 sem / 14:00 sáb-fest", "meta": "17:46", "tol": 10, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 15, "dur_meta": "15m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 17.941176470588236, "prom": "18m", "estado": "sin"}, {"n": "03", "id": "h03", "nombre": "Rebajas productivas", "corto": "Rebajas", "area": "CP", "serie": "#a65d57", "origen": "h02", "origen_nombre": "Preventa", "meta": "17:55", "tol": 5, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 15, "dur_meta": "15m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 20.181818181818183, "prom": "20m", "estado": "sin"}, {"n": "04", "id": "h04", "nombre": "Pre-secuencia ajustada", "corto": "Pre-secuencia", "area": "CP", "serie": "#b08d57", "origen": "h03", "origen_nombre": "Rebajas productivas", "meta": "18:15", "tol": 15, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 30, "dur_meta": "30m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 70.58333333333333, "prom": "1h 11m", "estado": "sin"}, {"n": "05", "id": "h05", "nombre": "Ruteo", "corto": "Ruteo", "area": "Distribución", "serie": "#7a6c9e", "origen": "h04", "origen_nombre": "Pre-secuencia ajustada", "meta": "19:45", "tol": 15, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 120, "dur_meta": "2h 00m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 140.06666666666666, "prom": "2h 20m", "estado": "sin"}, {"n": "06", "id": "h06", "nombre": "Planificación de camiones", "corto": "Planif. camiones", "area": "Distribución", "serie": "#748092", "origen": "h04", "origen_nombre": "Pre-secuencia ajustada", "meta": "20:00", "tol": 15, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": 150, "dur_meta": "2h 30m", "desv_dur_min": null, "desv_dur": "—", "prom_min": 189.83333333333334, "prom": "3h 10m", "estado": "sin"}, {"n": "07", "id": "h07", "nombre": "(Por definir) — a partir de Ruteo", "corto": "Pend. 7", "area": "", "serie": "#5e8c6a", "origen": "h05", "origen_nombre": "Ruteo", "meta": "", "tol": 15, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": null, "dur_meta": "—", "desv_dur_min": null, "desv_dur": "—", "prom_min": null, "prom": "—", "estado": "sin"}, {"n": "08", "id": "h08", "nombre": "(Por definir) — a partir de Planif. de camiones", "corto": "Pend. 8", "area": "", "serie": "#9c6b4f", "origen": "h06", "origen_nombre": "Planificación de camiones", "meta": "", "tol": 15, "real_min": null, "real": "—", "desv_min": null, "desv": "—", "dur_min": null, "dur": "—", "dur_meta_min": null, "dur_meta": "—", "desv_dur_min": null, "desv_dur": "—", "prom_min": null, "prom": "—", "estado": "sin"}], "tendencia": {"sla_min": 240, "puntos": [{"fecha": "2026-08-18", "val": 114}, {"fecha": "2026-08-19", "val": 166}, {"fecha": "2026-08-20", "val": 92}, {"fecha": "2026-08-21", "val": null}, {"fecha": "2026-08-24", "val": 286}, {"fecha": "2026-08-25", "val": 328}, {"fecha": "2026-08-26", "val": 289}, {"fecha": "2026-08-27", "val": 358}, {"fecha": "2026-08-28", "val": 37}, {"fecha": "2026-08-31", "val": 352}, {"fecha": "2026-09-01", "val": 244}, {"fecha": "2026-09-02", "val": 320}, {"fecha": "2026-09-03", "val": 285}, {"fecha": "2026-09-04", "val": 37}, {"fecha": "2026-09-07", "val": 280}, {"fecha": "2026-09-08", "val": 360}, {"fecha": "2026-09-09", "val": 318}, {"fecha": "2026-09-10", "val": 364}, {"fecha": "2026-09-11", "val": null}, {"fecha": "2026-09-14", "val": null}]}, "cumplimiento": {"barras": [{"fecha": "2026-08-18", "pct": 100}, {"fecha": "2026-08-19", "pct": 0}, {"fecha": "2026-08-20", "pct": 33}, {"fecha": "2026-08-21", "pct": null}, {"fecha": "2026-08-24", "pct": 60}, {"fecha": "2026-08-25", "pct": 17}, {"fecha": "2026-08-26", "pct": 17}, {"fecha": "2026-08-27", "pct": 50}, {"fecha": "2026-08-28", "pct": 100}, {"fecha": "2026-08-31", "pct": 33}, {"fecha": "2026-09-01", "pct": 50}, {"fecha": "2026-09-02", "pct": 33}, {"fecha": "2026-09-03", "pct": 50}, {"fecha": "2026-09-04", "pct": 100}, {"fecha": "2026-09-07", "pct": 50}, {"fecha": "2026-09-08", "pct": 67}, {"fecha": "2026-09-09", "pct": 50}, {"fecha": "2026-09-10", "pct": 33}, {"fecha": "2026-09-11", "pct": null}, {"fecha": "2026-09-14", "pct": null}], "prom": 50}, "aportes": [{"nombre": "Planificación de camiones", "pct": 39.3, "txt": "3h 10m · 39%", "estado": "bad"}, {"nombre": "Ruteo", "pct": 29.0, "txt": "2h 20m · 29%", "estado": "bad"}, {"nombre": "Pre-secuencia ajustada", "pct": 14.6, "txt": "1h 11m · 15%", "estado": "bad"}, {"nombre": "Modelo", "pct": 9.1, "txt": "44m · 9%", "estado": "bad"}, {"nombre": "Rebajas productivas", "pct": 4.2, "txt": "20m · 4%", "estado": "bad"}, {"nombre": "Preventa", "pct": 3.7, "txt": "18m · 4%", "estado": "warn"}], "duraciones_hito": {"h01": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": 70, "dur": "1h 10m"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": 31, "dur": "31m"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 49, "dur": "49m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 51, "dur": "51m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": 43, "dur": "43m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 37, "dur": "37m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 40, "dur": "40m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 44, "dur": "44m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 36, "dur": "36m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 29, "dur": "29m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 32, "dur": "32m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 40, "dur": "40m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 71, "dur": "1h 11m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h02": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": 119, "dur": "1h 59m"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": 48, "dur": "48m"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": 14, "dur": "14m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": 7, "dur": "7m"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 8, "dur": "8m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": 7, "dur": "7m"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 12, "dur": "12m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 14, "dur": "14m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h03": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 26, "dur": "26m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 22, "dur": "22m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": 21, "dur": "21m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 51, "dur": "51m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 7, "dur": "7m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 15, "dur": "15m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 23, "dur": "23m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 6, "dur": "6m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 9, "dur": "9m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 33, "dur": "33m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h04": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": 99, "dur": "1h 39m"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 60, "dur": "1h 00m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 60, "dur": "1h 00m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": 271, "dur": "4h 31m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 83, "dur": "1h 23m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 27, "dur": "27m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 53, "dur": "53m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 42, "dur": "42m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 47, "dur": "47m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 41, "dur": "41m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 26, "dur": "26m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 38, "dur": "38m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h05": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": 114, "dur": "1h 54m"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": 166, "dur": "2h 46m"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": 92, "dur": "1h 32m"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": 128, "dur": "2h 08m"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 161, "dur": "2h 41m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 142, "dur": "2h 22m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": -25, "dur": "-25m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 109, "dur": "1h 49m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 146, "dur": "2h 26m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 195, "dur": "3h 15m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 159, "dur": "2h 39m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 129, "dur": "2h 09m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 187, "dur": "3h 07m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 166, "dur": "2h 46m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 232, "dur": "3h 52m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h06": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": 187, "dur": "3h 07m"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": 203, "dur": "3h 23m"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": 169, "dur": "2h 49m"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": 22, "dur": "22m"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": 180, "dur": "3h 00m"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": 172, "dur": "2h 52m"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": 214, "dur": "3h 34m"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": 196, "dur": "3h 16m"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": 171, "dur": "2h 51m"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": 274, "dur": "4h 34m"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": 241, "dur": "4h 01m"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": 249, "dur": "4h 09m"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h07": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}], "h08": [{"fecha": "2026-08-18", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-19", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-20", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-21", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-24", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-25", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-26", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-27", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-28", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-08-31", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-01", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-02", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-03", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-04", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-07", "dia": "Lun", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-08", "dia": "Mar", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-09", "dia": "Mié", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-10", "dia": "Jue", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-11", "dia": "Vie", "dur_min": null, "dur": "—"}, {"fecha": "2026-09-14", "dia": "Lun", "dur_min": null, "dur": "—"}]}, "cumplimiento_areas": [{"fecha": "2026-08-18", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "Distribución", "color": "#b08d57", "dur_min": 76}], "total_min": 114}, {"fecha": "2026-08-19", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 149}, {"area": "Distribución", "color": "#b08d57", "dur_min": 17}], "total_min": 166}, {"fecha": "2026-08-20", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 78}, {"area": "CP", "color": "#5b7fa6", "dur_min": 0}, {"area": "Distribución", "color": "#b08d57", "dur_min": 22}], "total_min": 92}, {"fecha": "2026-08-21", "segs": [], "total_min": null}, {"fecha": "2026-08-24", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 39}, {"area": "CP", "color": "#5b7fa6", "dur_min": 60}, {"area": "Distribución", "color": "#b08d57", "dur_min": 187}], "total_min": 286}, {"fecha": "2026-08-25", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 39}, {"area": "CP", "color": "#5b7fa6", "dur_min": 86}, {"area": "Distribución", "color": "#b08d57", "dur_min": 203}], "total_min": 328}, {"fecha": "2026-08-26", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "CP", "color": "#5b7fa6", "dur_min": 82}, {"area": "Distribución", "color": "#b08d57", "dur_min": 169}], "total_min": 289}, {"fecha": "2026-08-27", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 44}, {"area": "CP", "color": "#5b7fa6", "dur_min": 292}, {"area": "Distribución", "color": "#b08d57", "dur_min": 22}], "total_min": 358}, {"fecha": "2026-08-28", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 37}], "total_min": 37}, {"fecha": "2026-08-31", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "CP", "color": "#5b7fa6", "dur_min": 134}, {"area": "Distribución", "color": "#b08d57", "dur_min": 180}], "total_min": 352}, {"fecha": "2026-09-01", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "CP", "color": "#5b7fa6", "dur_min": 34}, {"area": "Distribución", "color": "#b08d57", "dur_min": 172}], "total_min": 244}, {"fecha": "2026-09-02", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "CP", "color": "#5b7fa6", "dur_min": 68}, {"area": "Distribución", "color": "#b08d57", "dur_min": 214}], "total_min": 320}, {"fecha": "2026-09-03", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 38}, {"area": "CP", "color": "#5b7fa6", "dur_min": 51}, {"area": "Distribución", "color": "#b08d57", "dur_min": 196}], "total_min": 285}, {"fecha": "2026-09-04", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 37}], "total_min": 37}, {"fecha": "2026-09-07", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 39}, {"area": "CP", "color": "#5b7fa6", "dur_min": 70}, {"area": "Distribución", "color": "#b08d57", "dur_min": 171}], "total_min": 280}, {"fecha": "2026-09-08", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 39}, {"area": "CP", "color": "#5b7fa6", "dur_min": 47}, {"area": "Distribución", "color": "#b08d57", "dur_min": 274}], "total_min": 360}, {"fecha": "2026-09-09", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 42}, {"area": "CP", "color": "#5b7fa6", "dur_min": 35}, {"area": "Distribución", "color": "#b08d57", "dur_min": 241}], "total_min": 318}, {"fecha": "2026-09-10", "segs": [{"area": "Supply Chain", "color": "#6b9080", "dur_min": 44}, {"area": "CP", "color": "#5b7fa6", "dur_min": 71}, {"area": "Distribución", "color": "#b08d57", "dur_min": 249}], "total_min": 364}, {"fecha": "2026-09-11", "segs": [], "total_min": null}, {"fecha": "2026-09-14", "segs": [], "total_min": null}], "heatmap": {"dias": ["2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14"], "dow": ["Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun", "Mar", "Mié", "Jue", "Vie", "Lun"], "filas": [{"n": "01", "nombre": "Modelo", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": 40}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": 1}, {"fecha": "2026-08-25", "v": 19}, {"fecha": "2026-08-26", "v": 21}, {"fecha": "2026-08-27", "v": 13}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": 7}, {"fecha": "2026-09-01", "v": 10}, {"fecha": "2026-09-02", "v": 14}, {"fecha": "2026-09-03", "v": 6}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": -1}, {"fecha": "2026-09-08", "v": 2}, {"fecha": "2026-09-09", "v": 10}, {"fecha": "2026-09-10", "v": 41}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 14.076923076923077, "prom": "+14′", "estado": "bad"}, {"n": "02", "nombre": "Preventa", "celdas": [{"fecha": "2026-08-18", "v": -7}, {"fecha": "2026-08-19", "v": 104}, {"fecha": "2026-08-20", "v": 33}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": -6}, {"fecha": "2026-08-25", "v": -6}, {"fecha": "2026-08-26", "v": -7}, {"fecha": "2026-08-27", "v": -1}, {"fecha": "2026-08-28", "v": -8}, {"fecha": "2026-08-31", "v": -7}, {"fecha": "2026-09-01", "v": -7}, {"fecha": "2026-09-02", "v": -7}, {"fecha": "2026-09-03", "v": -7}, {"fecha": "2026-09-04", "v": -8}, {"fecha": "2026-09-07", "v": -6}, {"fecha": "2026-09-08", "v": -6}, {"fecha": "2026-09-09", "v": -3}, {"fecha": "2026-09-10", "v": -1}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 2.9411764705882355, "prom": "+3′", "estado": "warn"}, {"n": "03", "nombre": "Rebajas productivas", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": null}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": null}, {"fecha": "2026-08-25", "v": 11}, {"fecha": "2026-08-26", "v": 7}, {"fecha": "2026-08-27", "v": 6}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": 36}, {"fecha": "2026-09-01", "v": -8}, {"fecha": "2026-09-02", "v": 0}, {"fecha": "2026-09-03", "v": -6}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": 8}, {"fecha": "2026-09-08", "v": -9}, {"fecha": "2026-09-09", "v": -6}, {"fecha": "2026-09-10", "v": 18}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 5.181818181818182, "prom": "+5′", "estado": "bad"}, {"n": "04", "nombre": "Pre-secuencia ajustada", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": null}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": 69}, {"fecha": "2026-08-25", "v": 30}, {"fecha": "2026-08-26", "v": 30}, {"fecha": "2026-08-27", "v": 241}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": 53}, {"fecha": "2026-09-01", "v": -3}, {"fecha": "2026-09-02", "v": 23}, {"fecha": "2026-09-03", "v": 12}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": 17}, {"fecha": "2026-09-08", "v": 11}, {"fecha": "2026-09-09", "v": -4}, {"fecha": "2026-09-10", "v": 8}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 40.583333333333336, "prom": "+41′", "estado": "bad"}, {"n": "05", "nombre": "Ruteo", "celdas": [{"fecha": "2026-08-18", "v": -6}, {"fecha": "2026-08-19", "v": 46}, {"fecha": "2026-08-20", "v": -28}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": 8}, {"fecha": "2026-08-25", "v": 41}, {"fecha": "2026-08-26", "v": 22}, {"fecha": "2026-08-27", "v": -145}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": -11}, {"fecha": "2026-09-01", "v": 26}, {"fecha": "2026-09-02", "v": 75}, {"fecha": "2026-09-03", "v": 39}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": 9}, {"fecha": "2026-09-08", "v": 67}, {"fecha": "2026-09-09", "v": 46}, {"fecha": "2026-09-10", "v": 112}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 20.066666666666666, "prom": "+20′", "estado": "bad"}, {"n": "06", "nombre": "Planificación de camiones", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": null}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": 37}, {"fecha": "2026-08-25", "v": 53}, {"fecha": "2026-08-26", "v": 19}, {"fecha": "2026-08-27", "v": -128}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": 30}, {"fecha": "2026-09-01", "v": 22}, {"fecha": "2026-09-02", "v": 64}, {"fecha": "2026-09-03", "v": 46}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": 21}, {"fecha": "2026-09-08", "v": 124}, {"fecha": "2026-09-09", "v": 91}, {"fecha": "2026-09-10", "v": 99}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": 39.833333333333336, "prom": "+40′", "estado": "bad"}, {"n": "07", "nombre": "(Por definir) — a partir de Ruteo", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": null}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": null}, {"fecha": "2026-08-25", "v": null}, {"fecha": "2026-08-26", "v": null}, {"fecha": "2026-08-27", "v": null}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": null}, {"fecha": "2026-09-01", "v": null}, {"fecha": "2026-09-02", "v": null}, {"fecha": "2026-09-03", "v": null}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": null}, {"fecha": "2026-09-08", "v": null}, {"fecha": "2026-09-09", "v": null}, {"fecha": "2026-09-10", "v": null}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": null, "prom": "—", "estado": "sin"}, {"n": "08", "nombre": "(Por definir) — a partir de Planif. de camiones", "celdas": [{"fecha": "2026-08-18", "v": null}, {"fecha": "2026-08-19", "v": null}, {"fecha": "2026-08-20", "v": null}, {"fecha": "2026-08-21", "v": null}, {"fecha": "2026-08-24", "v": null}, {"fecha": "2026-08-25", "v": null}, {"fecha": "2026-08-26", "v": null}, {"fecha": "2026-08-27", "v": null}, {"fecha": "2026-08-28", "v": null}, {"fecha": "2026-08-31", "v": null}, {"fecha": "2026-09-01", "v": null}, {"fecha": "2026-09-02", "v": null}, {"fecha": "2026-09-03", "v": null}, {"fecha": "2026-09-04", "v": null}, {"fecha": "2026-09-07", "v": null}, {"fecha": "2026-09-08", "v": null}, {"fecha": "2026-09-09", "v": null}, {"fecha": "2026-09-10", "v": null}, {"fecha": "2026-09-11", "v": null}, {"fecha": "2026-09-14", "v": null}], "prom_min": null, "prom": "—", "estado": "sin"}]}, "crono": {"eje_inicio_min": 1020, "eje_fin_min": 1414, "marcas": [{"min": 1020, "label": "17:00"}, {"min": 1080, "label": "18:00"}, {"min": 1140, "label": "19:00"}, {"min": 1200, "label": "20:00"}, {"min": 1260, "label": "21:00"}, {"min": 1320, "label": "22:00"}, {"min": 1380, "label": "23:00"}], "referencias": [{"min": 1020, "label": "Inicio · 17:00"}, {"min": 1050, "label": "Preventa · 17:30"}, {"min": 1260, "label": "Meta cierre · 21:00"}], "dias": [{"fecha": "03/09", "dia": "Jue", "segs": [{"ini_min": 1020, "fin_min": 1056, "dur_min": 36, "area": "CP", "color": "#5b7fa6", "nombre": "Modelo", "real": "17:36", "desv_min": 6, "desv": "+6′", "estado": "bad", "z": 0, "peek": true}, {"ini_min": 1050, "fin_min": 1058, "dur_min": 8, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:38", "desv_min": -7, "desv": "−7′", "estado": "ok", "z": 1, "peek": false}, {"ini_min": 1058, "fin_min": 1067, "dur_min": 9, "area": "CP", "color": "#a65d57", "nombre": "Rebajas productivas", "real": "17:47", "desv_min": -6, "desv": "−6′", "estado": "ok", "z": 2, "peek": false}, {"ini_min": 1067, "fin_min": 1109, "dur_min": 42, "area": "CP", "color": "#b08d57", "nombre": "Pre-secuencia ajustada", "real": "18:29", "desv_min": 12, "desv": "+12′", "estado": "warn", "z": 3, "peek": false}, {"ini_min": 1109, "fin_min": 1268, "dur_min": 159, "area": "Distribución", "color": "#7a6c9e", "nombre": "Ruteo", "real": "21:08", "desv_min": 39, "desv": "+39′", "estado": "bad", "z": 4, "peek": true}, {"ini_min": 1109, "fin_min": 1305, "dur_min": 196, "area": "Distribución", "color": "#748092", "nombre": "Planificación de camiones", "real": "21:45", "desv_min": 46, "desv": "+46′", "estado": "bad", "z": 5, "peek": false}], "cierre": "21:45", "cierre_min": 1305, "desv": "+45′", "estado": "bad"}, {"fecha": "04/09", "dia": "Vie", "segs": [{"ini_min": 1050, "fin_min": 1057, "dur_min": 7, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:37", "desv_min": -8, "desv": "−8′", "estado": "ok", "z": 0, "peek": false}], "cierre": "17:37", "cierre_min": 1057, "desv": "−203′", "estado": "ok"}, {"fecha": "07/09", "dia": "Lun", "segs": [{"ini_min": 1020, "fin_min": 1049, "dur_min": 29, "area": "CP", "color": "#5b7fa6", "nombre": "Modelo", "real": "17:29", "desv_min": -1, "desv": "−1′", "estado": "ok", "z": 0, "peek": false}, {"ini_min": 1050, "fin_min": 1059, "dur_min": 9, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:39", "desv_min": -6, "desv": "−6′", "estado": "ok", "z": 1, "peek": false}, {"ini_min": 1059, "fin_min": 1082, "dur_min": 23, "area": "CP", "color": "#a65d57", "nombre": "Rebajas productivas", "real": "18:02", "desv_min": 8, "desv": "+8′", "estado": "bad", "z": 2, "peek": false}, {"ini_min": 1082, "fin_min": 1129, "dur_min": 47, "area": "CP", "color": "#b08d57", "nombre": "Pre-secuencia ajustada", "real": "18:49", "desv_min": 17, "desv": "+17′", "estado": "bad", "z": 3, "peek": false}, {"ini_min": 1129, "fin_min": 1258, "dur_min": 129, "area": "Distribución", "color": "#7a6c9e", "nombre": "Ruteo", "real": "20:58", "desv_min": 9, "desv": "+9′", "estado": "warn", "z": 4, "peek": true}, {"ini_min": 1129, "fin_min": 1300, "dur_min": 171, "area": "Distribución", "color": "#748092", "nombre": "Planificación de camiones", "real": "21:40", "desv_min": 21, "desv": "+21′", "estado": "bad", "z": 5, "peek": false}], "cierre": "21:40", "cierre_min": 1300, "desv": "+40′", "estado": "bad"}, {"fecha": "08/09", "dia": "Mar", "segs": [{"ini_min": 1020, "fin_min": 1052, "dur_min": 32, "area": "CP", "color": "#5b7fa6", "nombre": "Modelo", "real": "17:32", "desv_min": 2, "desv": "+2′", "estado": "warn", "z": 0, "peek": true}, {"ini_min": 1050, "fin_min": 1059, "dur_min": 9, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:39", "desv_min": -6, "desv": "−6′", "estado": "ok", "z": 1, "peek": false}, {"ini_min": 1059, "fin_min": 1065, "dur_min": 6, "area": "CP", "color": "#a65d57", "nombre": "Rebajas productivas", "real": "17:45", "desv_min": -9, "desv": "−9′", "estado": "ok", "z": 2, "peek": false}, {"ini_min": 1065, "fin_min": 1106, "dur_min": 41, "area": "CP", "color": "#b08d57", "nombre": "Pre-secuencia ajustada", "real": "18:26", "desv_min": 11, "desv": "+11′", "estado": "warn", "z": 3, "peek": false}, {"ini_min": 1106, "fin_min": 1293, "dur_min": 187, "area": "Distribución", "color": "#7a6c9e", "nombre": "Ruteo", "real": "21:33", "desv_min": 67, "desv": "+67′", "estado": "bad", "z": 4, "peek": true}, {"ini_min": 1106, "fin_min": 1380, "dur_min": 274, "area": "Distribución", "color": "#748092", "nombre": "Planificación de camiones", "real": "23:00", "desv_min": 124, "desv": "+124′", "estado": "bad", "z": 5, "peek": false}], "cierre": "23:00", "cierre_min": 1380, "desv": "+120′", "estado": "bad"}, {"fecha": "09/09", "dia": "Mié", "segs": [{"ini_min": 1020, "fin_min": 1060, "dur_min": 40, "area": "CP", "color": "#5b7fa6", "nombre": "Modelo", "real": "17:40", "desv_min": 10, "desv": "+10′", "estado": "bad", "z": 0, "peek": true}, {"ini_min": 1050, "fin_min": 1062, "dur_min": 12, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:42", "desv_min": -3, "desv": "−3′", "estado": "ok", "z": 1, "peek": false}, {"ini_min": 1062, "fin_min": 1071, "dur_min": 9, "area": "CP", "color": "#a65d57", "nombre": "Rebajas productivas", "real": "17:51", "desv_min": -6, "desv": "−6′", "estado": "ok", "z": 2, "peek": false}, {"ini_min": 1071, "fin_min": 1097, "dur_min": 26, "area": "CP", "color": "#b08d57", "nombre": "Pre-secuencia ajustada", "real": "18:17", "desv_min": -4, "desv": "−4′", "estado": "ok", "z": 3, "peek": false}, {"ini_min": 1097, "fin_min": 1263, "dur_min": 166, "area": "Distribución", "color": "#7a6c9e", "nombre": "Ruteo", "real": "21:03", "desv_min": 46, "desv": "+46′", "estado": "bad", "z": 4, "peek": true}, {"ini_min": 1097, "fin_min": 1338, "dur_min": 241, "area": "Distribución", "color": "#748092", "nombre": "Planificación de camiones", "real": "22:18", "desv_min": 91, "desv": "+91′", "estado": "bad", "z": 5, "peek": false}], "cierre": "22:18", "cierre_min": 1338, "desv": "+78′", "estado": "bad"}, {"fecha": "10/09", "dia": "Jue", "segs": [{"ini_min": 1020, "fin_min": 1091, "dur_min": 71, "area": "CP", "color": "#5b7fa6", "nombre": "Modelo", "real": "18:11", "desv_min": 41, "desv": "+41′", "estado": "bad", "z": 0, "peek": true}, {"ini_min": 1050, "fin_min": 1064, "dur_min": 14, "area": "Supply Chain", "color": "#6b9080", "nombre": "Preventa", "real": "17:44", "desv_min": -1, "desv": "−1′", "estado": "ok", "z": 1, "peek": false}, {"ini_min": 1064, "fin_min": 1097, "dur_min": 33, "area": "CP", "color": "#a65d57", "nombre": "Rebajas productivas", "real": "18:17", "desv_min": 18, "desv": "+18′", "estado": "bad", "z": 2, "peek": false}, {"ini_min": 1097, "fin_min": 1135, "dur_min": 38, "area": "CP", "color": "#b08d57", "nombre": "Pre-secuencia ajustada", "real": "18:55", "desv_min": 8, "desv": "+8′", "estado": "warn", "z": 3, "peek": false}, {"ini_min": 1135, "fin_min": 1367, "dur_min": 232, "area": "Distribución", "color": "#7a6c9e", "nombre": "Ruteo", "real": "22:47", "desv_min": 112, "desv": "+112′", "estado": "bad", "z": 4, "peek": true}, {"ini_min": 1135, "fin_min": 1384, "dur_min": 249, "area": "Distribución", "color": "#748092", "nombre": "Planificación de camiones", "real": "23:04", "desv_min": 99, "desv": "+99′", "estado": "bad", "z": 5, "peek": false}], "cierre": "23:04", "cierre_min": 1384, "desv": "+124′", "estado": "bad"}, {"fecha": "11/09", "dia": "Vie", "segs": [], "cierre": "—", "cierre_min": null, "desv": "—", "estado": "sin"}, {"fecha": "14/09", "dia": "Lun", "segs": [], "cierre": "—", "cierre_min": null, "desv": "—", "estado": "sin"}]}, "areas": [{"nombre": "Supply Chain", "color": "#6b9080", "cumpl": 88, "estado": "ok", "n_hitos": 1}, {"nombre": "CP", "color": "#5b7fa6", "cumpl": 36, "estado": "bad", "n_hitos": 3}, {"nombre": "Distribución", "color": "#b08d57", "cumpl": 26, "estado": "bad", "n_hitos": 2}], "hallazgos": [{"severidad": "alta", "hito": "Modelo", "area": "CP", "texto": "\"Modelo\" supera su duración objetivo (30m) en 92% de los días (12/13).", "metrica": "+14′"}, {"severidad": "alta", "hito": "Pre-secuencia ajustada", "area": "CP", "texto": "\"Pre-secuencia ajustada\" supera su duración objetivo (30m) en 83% de los días (10/12).", "metrica": "+41′"}, {"severidad": "alta", "hito": "Planificación de camiones", "area": "Distribución", "texto": "\"Planificación de camiones\" supera su duración objetivo (2h 30m) en 92% de los días (11/12).", "metrica": "+40′"}, {"severidad": "media", "hito": "Rebajas productivas", "area": "CP", "texto": "\"Rebajas productivas\" supera su duración objetivo (15m) en 55% de los días (6/11).", "metrica": "+5′"}, {"severidad": "media", "hito": "Ruteo", "area": "Distribución", "texto": "\"Ruteo\" supera su duración objetivo (2h 00m) en 73% de los días (11/15).", "metrica": "+20′"}]}, "usuario": {"nombre": "martin.valdes", "rol": "admin"}, "caps": {"refrescar": true, "editar_maestras": true, "publicar": true, "admin_usuarios": true}, "roles": ["admin", "CP", "Distribución", "Visita"], "publicado": "2026-09-14T11:48:11"};
+const CAPS = {};
+let DATA = null, IND = null, TAB = 'resumen';
+const TABS = [['resumen','Resumen'],['tend','Tendencias'],['heat','Mapa de calor'],['crono','Cronología'],['areas','Áreas'],['config','Configuración']];
+const $ = s => document.querySelector(s);
+const el = (t, css, html) => { const e=document.createElement(t); if(css)e.style.cssText=css; if(html!=null)e.innerHTML=html; return e; };
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const col   = s => s==='ok'?'var(--ok)':s==='warn'?'var(--warn)':s==='bad'?'var(--bad)':s==='accent'?'var(--accent)':'var(--ink2)';
+const band  = s => s==='ok'?'#2f8f68':s==='warn'?'#c08d1e':s==='bad'?'#c4463a':'#3a4452';
+const chip  = s => s==='ok'?'rgba(63,178,127,.14)':s==='warn'?'rgba(226,167,44,.15)':s==='bad'?'rgba(224,88,74,.15)':'rgba(120,130,145,.15)';
+const etiq  = s => s==='ok'?'En meta':s==='warn'?'En riesgo':s==='bad'?'Fuera SLA':'Sin dato';
+
+function hhmmMin(s){ const m=/^(\d{1,2}):(\d{2})/.exec(s||''); return m?(+m[1]*60+ +m[2]):null; }
+function fmtDurMin(min){ if(min==null) return '—'; min=Math.round(min); const h=Math.floor(Math.abs(min)/60), m=Math.abs(min)%60; const s=h?h+'h '+String(m).padStart(2,'0')+'m':m+'m'; return min<0?('-'+s):s; }
+function heatColor(v){
+  if(v==null) return 'var(--panel3)';
+  if(v<=0)  return 'rgba(63,178,127,'+(0.22+Math.min(0.5,-v/30)).toFixed(2)+')';
+  if(v<=15) return 'rgba(226,167,44,'+(0.18+v/40).toFixed(2)+')';
+  return 'rgba(224,88,74,'+Math.min(0.92,0.3+v/70).toFixed(2)+')';
+}
+
+// ===== Carga =====
+async function cargar(){
+  try{
+    if(STATIC_MODE){
+      DATA = EMBEDDED_DATA;   // build publicado: sin backend, nada que fetchear
+    } else {
+      const r = await fetch('/api/data'); DATA = await r.json();
+    }
+    IND = DATA.indicadores;
+    $('#sync').textContent = (IND.generado||'').slice(11,16) || '—';
+    $('#fecha').textContent = IND.hoy_fmt || '—';
+    render();
+  }catch(e){ $('#err').classList.remove('hidden'); $('#err').textContent='No se pudo cargar los datos: '+e; }
+}
+
+function tabsNav(){
+  const nav = $('#tabs'); nav.innerHTML='';
+  TABS.forEach(([id,label])=>{
+    const b = el('button', null, label); b.className='tab-btn'+(TAB===id?' on':'');
+    b.onclick=()=>{ TAB=id; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function render(){
+  tabsNav();
+  ['resumen','tend','heat','crono','areas','config'].forEach(id=>{
+    $('#tab-'+id).classList.toggle('hidden', TAB!==id);
+  });
+  if(TAB==='resumen') renderResumen();
+  else if(TAB==='tend') renderTend();
+  else if(TAB==='heat') renderHeat();
+  else if(TAB==='crono') renderCrono();
+  else if(TAB==='areas') renderAreas();
+  else if(TAB==='config') renderConfig();
+}
+
+// ===== RESUMEN =====
+function renderResumen(){
+  const c = $('#tab-resumen'); c.innerHTML='';
+  const wrap = el('div','display:flex;flex-direction:column;gap:var(--pad)');
+
+  // KPIs
+  const grid = el('div','display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--pad)');
+  (IND.kpis||[]).forEach(k=>{
+    const card = el('div','position:relative;overflow:hidden;padding:13px 14px 12px'); card.className='panel';
+    card.style.boxShadow='var(--shadow)';
+    card.appendChild(el('div','position:absolute;left:0;top:0;bottom:0;width:3px;background:'+col(k.estado)));
+    card.appendChild(el('div','margin-bottom:7px','<span class="lbl">'+esc(k.label)+'</span>'));
+    card.appendChild(el('div','display:flex;align-items:baseline;gap:6px',
+      '<span class="mono" style="font-size:27px;line-height:1;letter-spacing:-1px;color:var(--ink)">'+esc(k.value)+'</span>'+
+      '<span class="mono" style="font-size:11px;font-weight:500;color:'+col(k.estado)+'">'+esc(k.delta)+'</span>'));
+    card.appendChild(el('div','font:400 10.5px/1.4 IBM Plex Sans;color:var(--ink2);margin-top:6px',esc(k.foot)));
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+
+  // Cuello de botella
+  const bn = IND.bottleneck;
+  if(bn){
+    const b = el('div','border-left:3px solid var(--bad);padding:14px 16px;display:flex;flex-wrap:wrap;gap:20px;align-items:center'); b.className='panel';
+    const left = el('div','min-width:230px;flex:1');
+    left.innerHTML='<div class="lbl" style="color:var(--bad);letter-spacing:.7px;margin-bottom:5px">Cuello de botella de hoy</div>'+
+      '<div style="font:600 17px/1.25 IBM Plex Sans;letter-spacing:-.2px">'+esc(bn.hito)+' · '+esc(bn.area)+'</div>'+
+      '<div style="font:400 11.5px/1.5 IBM Plex Sans;color:var(--ink2);margin-top:4px;max-width:60ch">'+esc(bn.texto)+'</div>';
+    b.appendChild(left);
+    const m = el('div','display:flex;gap:26px;flex-wrap:wrap');
+    (bn.metrics||[]).forEach(x=>m.appendChild(el('div',null,
+      '<div class="lbl" style="margin-bottom:4px">'+esc(x.k)+'</div><div class="mono" style="font-size:18px;font-weight:600;color:'+col(x.estado==='ink'?'':x.estado)+'">'+esc(x.v)+'</div>')));
+    b.appendChild(m); wrap.appendChild(b);
+  }
+
+  // Línea de tiempo + tabla
+  const panel = el('div','overflow:hidden'); panel.className='panel';
+  const head = el('div','display:flex;align-items:center;gap:12px'); head.className='hd';
+  head.appendChild(el('h2',null,'Línea de tiempo del proceso · hoy'));
+  head.appendChild(el('div','flex:1'));
+  const leg = el('div','display:flex;gap:14px');
+  [['En meta','#2f8f68'],['En riesgo','#c08d1e'],['Fuera SLA','#c4463a']].forEach(([t,cl])=>
+    leg.appendChild(el('span','display:flex;align-items:center;gap:6px;font:500 10px IBM Plex Mono;color:var(--ink2)','<i style="width:8px;height:8px;border-radius:2px;background:'+cl+';display:block"></i>'+t)));
+  head.appendChild(leg); panel.appendChild(head);
+
+  // barra apilada
+  const tl = IND.timeline||{segs:[]};
+  const barWrap = el('div','padding:16px 16px 6px');
+  const bar = el('div','display:flex;height:30px;border-radius:5px;overflow:hidden;border:1px solid var(--line)');
+  (tl.segs||[]).forEach(s=>{
+    const seg = el('div','width:'+s.pct+'%;background:'+band(s.estado)+';border-right:1px solid var(--bg);display:grid;place-items:center;min-width:0');
+    seg.appendChild(el('span','font:600 10px IBM Plex Mono;color:#fff;opacity:.92;white-space:nowrap;overflow:hidden',esc(s.dur)));
+    bar.appendChild(seg);
+  });
+  barWrap.appendChild(bar);
+  barWrap.appendChild(el('div','display:flex;justify-content:space-between;margin-top:5px;font:500 10px IBM Plex Mono;color:var(--ink3)',
+    '<span>'+esc(tl.inicio)+'</span><span>meta cierre '+esc((IND.proceso||{}).meta_cierre||'')+'</span><span>'+esc(tl.cierre)+'</span>'));
+  panel.appendChild(barWrap);
+
+  // tabla de hitos -- métrica FOCO: duración real vs. objetivo (desde el ORIGEN del
+  // hito), no la hora absoluta; la hora/meta quedan como columnas informativas.
+  const tw = el('div','overflow-x:auto');
+  const t = el('table'); t.style.minWidth='980px';
+  t.innerHTML='<thead><tr><th>#</th><th>Hito</th><th>Área</th><th>Origen</th>'+
+    '<th style="text-align:right">Hora real</th><th style="text-align:right">Duración</th>'+
+    '<th style="text-align:right">Objetivo</th><th style="text-align:right">Desv.</th>'+
+    '<th>Prom.</th><th>Estado</th></tr></thead>';
+  const tb = el('tbody');
+  (IND.hitos||[]).forEach(h=>{
+    const promPct = h.prom_min && IND.hitos.length ? Math.min(100, Math.round(h.prom_min / Math.max(...IND.hitos.map(x=>x.prom_min||0),1)*100)) : 0;
+    const usaDur = h.dur_meta_min!=null;
+    const desvTxt = usaDur ? h.desv_dur : h.desv;
+    const tr = el('tr');
+    tr.innerHTML =
+      '<td class="mono" style="color:var(--ink3);font-weight:500">'+esc(h.n)+'</td>'+
+      '<td style="font-weight:500;white-space:nowrap">'+esc(h.nombre)+'</td>'+
+      '<td style="color:var(--ink2);white-space:nowrap">'+esc(h.area)+'</td>'+
+      '<td style="color:var(--ink3);font-size:11px;white-space:nowrap">'+esc(h.origen_nombre||'Inicio')+'</td>'+
+      '<td class="mono" style="text-align:right;color:var(--ink2)">'+esc(h.real)+'</td>'+
+      '<td class="mono" style="text-align:right;font-weight:600">'+esc(h.dur)+'</td>'+
+      '<td class="mono" style="text-align:right;color:var(--ink2)">'+esc(h.dur_meta)+'</td>'+
+      '<td class="mono" style="text-align:right;font-weight:600;color:'+col(h.estado)+'">'+esc(desvTxt)+'</td>'+
+      '<td style="width:140px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:5px;border-radius:3px;background:var(--panel3);overflow:hidden;min-width:44px"><div style="height:100%;width:'+promPct+'%;background:'+band(h.estado)+'"></div></div><span class="mono" style="font-size:10.5px;color:var(--ink3)">'+esc(h.prom)+'</span></div></td>'+
+      '<td style="white-space:nowrap"><span class="chip" style="background:'+chip(h.estado)+';color:'+col(h.estado)+'"><i style="width:6px;height:6px;border-radius:50%;background:'+col(h.estado)+';display:block"></i>'+esc(etiq(h.estado))+'</span></td>';
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); tw.appendChild(t); panel.appendChild(tw);
+  wrap.appendChild(panel);
+
+  // Hallazgos
+  if((IND.hallazgos||[]).length){
+    const hp = el('div','overflow:hidden'); hp.className='panel';
+    hp.appendChild(el('div',null,'Hallazgos automáticos')).className='hd';
+    const list = el('div','padding:6px 16px 14px;display:flex;flex-direction:column');
+    IND.hallazgos.forEach(x=>{
+      const row = el('div','display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)');
+      const s = x.severidad==='alta'?'bad':'warn';
+      row.innerHTML='<i style="width:9px;height:9px;border-radius:2px;background:'+col(s)+';flex:none"></i>'+
+        '<span style="flex:1;font:400 12px IBM Plex Sans">'+esc(x.texto)+'</span>'+
+        '<span class="mono" style="font-size:11.5px;font-weight:600;color:'+col(s)+'">'+esc(x.metrica)+'</span>';
+      list.appendChild(row);
+    });
+    hp.appendChild(list); wrap.appendChild(hp);
+  }
+
+  c.appendChild(wrap);
+}
+
+// ===== TENDENCIAS =====
+function renderTend(){
+  const c = $('#tab-tend'); c.innerHTML='';
+  const grid = el('div','display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--pad)');
+
+  // Línea de duración total
+  const t = IND.tendencia||{puntos:[]}; const pts = (t.puntos||[]).filter(p=>p.val!=null);
+  const p1 = el('div','padding:14px 16px 8px;grid-column:1/-1'); p1.className='panel';
+  p1.appendChild(el('div','display:flex;align-items:baseline;gap:12px;margin-bottom:14px',
+    '<h2>Duración total del cierre · últimos '+ (IND.meta.ventana||20) +' días hábiles</h2><div style="flex:1"></div>'+
+    '<span class="mono" style="font-size:10px;color:var(--ink3)">MIN · LÍNEA PUNTEADA = SLA '+(t.sla_min||'')+'</span>'));
+  const vals = pts.map(p=>p.val); const lo=Math.min(t.sla_min,...vals)-15, hi=Math.max(t.sla_min,...vals)+15, H=240, W=1000;
+  const yv = v => (H-14)-((v-lo)/((hi-lo)||1))*(H-34);
+  const xv = i => (i/((pts.length-1)||1))*(W-4)+2;
+  const line = pts.map((p,i)=>(i?'L':'M')+xv(i).toFixed(1)+' '+yv(p.val).toFixed(1)).join(' ');
+  const slaY = yv(t.sla_min).toFixed(1);
+  let svg = '<svg viewBox="0 0 1000 240" preserveAspectRatio="none" style="width:100%;height:240px;display:block">'+
+    '<g stroke="var(--line)" stroke-width="1"><line x1="0" y1="40" x2="1000" y2="40"/><line x1="0" y1="100" x2="1000" y2="100"/><line x1="0" y1="160" x2="1000" y2="160"/><line x1="0" y1="220" x2="1000" y2="220"/></g>'+
+    '<line x1="0" y1="'+slaY+'" x2="1000" y2="'+slaY+'" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="6 5"/>'+
+    '<path d="'+line+' L998 226 L2 226 Z" fill="var(--accent)" opacity="0.13"/>'+
+    '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>'+
+    pts.map((p,i)=>'<circle cx="'+xv(i).toFixed(1)+'" cy="'+yv(p.val).toFixed(1)+'" r="3.5" fill="var(--panel)" stroke="'+(p.val>t.sla_min?'var(--bad)':'var(--ok)')+'" stroke-width="2.5"/>').join('')+
+    '</svg>';
+  p1.appendChild(el('div',null,svg));
+  if(pts.length) p1.appendChild(el('div','display:flex;justify-content:space-between;padding:4px 0 10px;font:500 10px IBM Plex Mono;color:var(--ink3)',
+    '<span>'+esc(pts[0].fecha)+'</span><span>'+esc(pts[pts.length-1].fecha)+'</span>'));
+  grid.appendChild(p1);
+
+  // Cierre por área (apilado Supply Chain -> CP -> Distribución), eje = horas desde
+  // el inicio del proceso, con línea roja horizontal en la meta de cierre.
+  const ca = IND.cumplimiento_areas||[];
+  const inicioMin = hhmmMin(IND.proceso.inicio);
+  const metaCierreMin = hhmmMin(IND.proceso.meta_cierre);
+  const CH = 170;
+  const maxMin = Math.max((metaCierreMin!=null&&inicioMin!=null)?(metaCierreMin-inicioMin):0,
+                          ...ca.map(d=>d.total_min||0), 60) * 1.12;
+  const pxPerMin = CH / (maxMin||1);
+  const p2 = el('div','padding:14px 16px'); p2.className='panel';
+  p2.appendChild(el('div','display:flex;align-items:baseline;gap:10px;margin-bottom:12px',
+    '<h2>Cierre por área · últimos '+ca.length+' días</h2><div style="flex:1"></div>'+
+    '<span class="mono" style="font-size:10px;color:var(--ink3)">HORAS DESDE '+esc(IND.proceso.inicio||'')+'</span>'));
+  const chartWrap = el('div','position:relative;height:'+CH+'px');
+  const bars = el('div','display:flex;align-items:flex-end;gap:3px;height:100%');
+  ca.forEach(d=>{
+    const colDia = el('div','flex:1;display:flex;flex-direction:column-reverse;height:100%;min-width:0;border-radius:3px 3px 0 0;overflow:hidden');
+    (d.segs||[]).forEach(s=>{
+      const hpx = Math.max(1, s.dur_min*pxPerMin);
+      colDia.appendChild(el('div','width:100%;height:'+hpx.toFixed(1)+'px;background:'+s.color));
+    });
+    bars.appendChild(colDia);
+  });
+  chartWrap.appendChild(bars);
+  if(metaCierreMin!=null && inicioMin!=null){
+    const yb = (metaCierreMin-inicioMin)*pxPerMin;
+    chartWrap.appendChild(el('div','position:absolute;left:0;right:0;bottom:'+yb.toFixed(1)+'px;border-top:1.5px solid var(--bad)'));
+    chartWrap.appendChild(el('span','position:absolute;right:0;bottom:'+(yb+3).toFixed(1)+'px;font:600 9px IBM Plex Mono;color:var(--bad);background:var(--panel);padding:0 4px',
+      'Objetivo '+esc(IND.proceso.meta_cierre)));
+  }
+  p2.appendChild(chartWrap);
+  const areaColor={};
+  ca.forEach(d=>(d.segs||[]).forEach(s=>{ areaColor[s.area]=s.color; }));
+  // orden de leyenda = orden visual del apilado (abajo->arriba), no "primero visto"
+  const ORDEN_AREAS_LEG = ['Supply Chain','CP','Distribución'];
+  const areaOrder = ORDEN_AREAS_LEG.filter(a=>a in areaColor).concat(Object.keys(areaColor).filter(a=>!ORDEN_AREAS_LEG.includes(a)));
+  const legAreas = el('div','display:flex;gap:14px;margin-top:10px;flex-wrap:wrap');
+  areaOrder.forEach(a=>legAreas.appendChild(el('span','display:flex;align-items:center;gap:5px;font:500 10px IBM Plex Mono;color:var(--ink2)',
+    '<i style="width:8px;height:8px;border-radius:2px;background:'+areaColor[a]+';display:block"></i>'+esc(a))));
+  p2.appendChild(legAreas);
+  if(ca.length) p2.appendChild(el('div','display:flex;justify-content:space-between;margin-top:6px;font:500 10px IBM Plex Mono;color:var(--ink3)',
+    '<span>'+esc(ca[0].fecha)+'</span><span>'+esc(ca[ca.length-1].fecha)+'</span>'));
+  grid.appendChild(p2);
+
+  // Duración promedio por hito (de la ventana, no solo hoy)
+  const p3 = el('div','padding:14px 16px'); p3.className='panel';
+  p3.appendChild(el('h2',null,'Duración promedio por hito · últimos '+(IND.meta.ventana||20)+' días')); p3.lastChild.style.marginBottom='12px';
+  const list = el('div','display:flex;flex-direction:column;gap:9px');
+  (IND.aportes||[]).forEach(a=>{
+    list.appendChild(el('div',null,
+      '<div style="display:flex;justify-content:space-between;font:400 11px IBM Plex Sans;margin-bottom:4px"><span>'+esc(a.nombre)+'</span><span class="mono" style="font-weight:600;color:var(--ink2)">'+esc(a.txt)+'</span></div>'+
+      '<div style="height:7px;border-radius:4px;background:var(--panel3);overflow:hidden"><div style="height:100%;width:'+a.pct+'%;background:'+band(a.estado)+';border-radius:4px"></div></div>'));
+  });
+  p3.appendChild(list); grid.appendChild(p3);
+  c.appendChild(grid);
+}
+
+// ===== HEATMAP =====
+function renderHeat(){
+  const c = $('#tab-heat'); c.innerHTML=''; const hm = IND.heatmap||{filas:[],dias:[],dow:[]};
+  const p = el('div','padding:14px 16px 18px'); p.className='panel';
+  p.appendChild(el('div','display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:16px',
+    '<h2>Mapa de calor · desviación por hito y día</h2><span class="mono" style="font-size:10px;color:var(--ink3)">'+
+    ((hm.dias[0]||'')+' – '+(hm.dias[hm.dias.length-1]||''))+'</span>'));
+  const scroll = el('div','overflow-x:auto'); const inner = el('div','min-width:720px;display:flex;flex-direction:column;gap:4px');
+  (hm.filas||[]).forEach(r=>{
+    const row = el('div','display:flex;align-items:center;gap:8px');
+    row.appendChild(el('div','width:188px;flex:none;font:400 11.5px IBM Plex Sans;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis',esc(r.n+' '+r.nombre)));
+    const cells = el('div','flex:1;display:flex;gap:3px');
+    (r.celdas||[]).forEach(cl=>{
+      const v = cl.v; const fg = (v!=null&&(v>24||v<-18))?'rgba(255,255,255,.95)':'var(--ink)';
+      cells.appendChild(el('div','flex:1;height:30px;border-radius:3px;background:'+heatColor(v)+';display:grid;place-items:center;font:500 9.5px IBM Plex Mono;color:'+fg+';min-width:0',
+        v==null?'':(v>0?'+'+v:''+v)));
+    });
+    row.appendChild(cells);
+    row.appendChild(el('div','width:58px;flex:none;text-align:right;font:600 11px IBM Plex Mono;color:'+col(r.estado),esc(r.prom)));
+    inner.appendChild(row);
+  });
+  // eje días
+  const axis = el('div','display:flex;align-items:center;gap:8px;margin-top:2px');
+  axis.appendChild(el('div','width:188px;flex:none'));
+  const days = el('div','flex:1;display:flex;gap:3px');
+  (hm.dow||[]).forEach(d=>days.appendChild(el('div','flex:1;text-align:center;font:500 9.5px IBM Plex Mono;color:var(--ink3);min-width:0',esc(d))));
+  axis.appendChild(days); axis.appendChild(el('div','width:58px;flex:none;text-align:right;font:500 9.5px IBM Plex Mono;color:var(--ink3)','PROM'));
+  inner.appendChild(axis);
+  scroll.appendChild(inner); p.appendChild(scroll); c.appendChild(p);
+}
+
+// ===== CRONOLOGÍA =====
+function renderCrono(){
+  const c = $('#tab-crono'); c.innerHTML='';
+  const cr = IND.crono || {};
+  const dias = cr.dias || [];
+  const eje0 = cr.eje_inicio_min||0, eje1 = cr.eje_fin_min||(eje0+360);
+  const pct = m => Math.max(0, Math.min(100, (m-eje0)/((eje1-eje0)||1)*100));
+
+  const p = el('div','padding:14px 16px 18px'); p.className='panel';
+  const head = el('div','display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px');
+  head.appendChild(el('h2',null,'Cronología comparativa · últimos '+dias.length+' días'));
+  head.appendChild(el('div','flex:1'));
+  const leg = el('div','display:flex;gap:12px;flex-wrap:wrap');
+  (IND.hitos||[]).forEach(h=>leg.appendChild(el('span','display:flex;align-items:center;gap:6px;font:500 10px IBM Plex Mono;color:var(--ink)','<i style="width:8px;height:8px;border-radius:2px;background:'+h.serie+';display:block"></i>'+esc(h.corto))));
+  head.appendChild(leg); p.appendChild(head);
+
+  // Grid: col1 fecha, col2 EJE ABSOLUTO de horas (fijo, no proporcional a cada día),
+  // col3 cierre, col4 desv. Fila 1 = eje de horas; filas 2.. = un día cada una.
+  // margin-top más grande de lo estrictamente necesario: deja aire arriba para el
+  // tooltip flotante del crosshair (ver más abajo) sin pisar el título/leyenda.
+  const grid = el('div','display:grid;grid-template-columns:96px 1fr 64px 58px;column-gap:10px;row-gap:6px;margin-top:38px;position:relative');
+  const filas = [];   // {el: <track>, segs: [...]} por día, para el hit-test del crosshair
+
+  // Cabecera (fila 1): altura fija con dos franjas -- arriba las horas del eje, abajo
+  // (escalonadas en 2 niveles para que no se pisen) las referencias fijas (inicio,
+  // horario de Preventa, meta cierre). La línea punteada de cada referencia arranca
+  // JUSTO DEBAJO de esta cabecera (HEADER_H) y baja por todos los días.
+  const HEADER_H = 44;
+  const sp1=el('div'); sp1.style.gridColumn='1'; sp1.style.gridRow='1'; grid.appendChild(sp1);
+  const axis = el('div','position:relative;height:'+HEADER_H+'px');
+  axis.style.gridColumn='2'; axis.style.gridRow='1';
+  (cr.marcas||[]).forEach(m=>axis.appendChild(el('span','position:absolute;top:0;left:'+pct(m.min).toFixed(2)+'%;transform:translateX(-50%);font:600 10px IBM Plex Mono;color:var(--ink);white-space:nowrap',esc(m.label))));
+  (cr.referencias||[]).forEach((r,ri)=>{
+    const x = pct(r.min);
+    axis.appendChild(el('span','position:absolute;top:'+(16+(ri%2)*14)+'px;left:'+x.toFixed(2)+'%;transform:translateX(2px);font:600 9px IBM Plex Mono;color:var(--ink);white-space:nowrap;background:var(--panel2);padding:0 3px;border-radius:2px;border:1px solid var(--line)', esc(r.label)));
+  });
+  grid.appendChild(axis);
+  const sp3=el('div'); sp3.style.gridColumn='3'; sp3.style.gridRow='1'; grid.appendChild(sp3);
+  const sp4=el('div'); sp4.style.gridColumn='4'; sp4.style.gridRow='1'; grid.appendChild(sp4);
+
+  dias.forEach((d,i)=>{
+    const r = i+2;
+    const lbl = el('div',null,'<div class="mono" style="font-size:11.5px;font-weight:600">'+esc(d.fecha)+'</div><div style="font:400 10px IBM Plex Sans;color:var(--ink3)">'+esc(d.dia)+'</div>');
+    lbl.style.gridColumn='1'; lbl.style.gridRow=String(r); lbl.style.alignSelf='center';
+    grid.appendChild(lbl);
+
+    const track = el('div','position:relative;height:22px'); // sin fondo: lo en blanco es tiempo muerto real
+    track.style.gridColumn='2'; track.style.gridRow=String(r); track.style.alignSelf='center';
+    (d.segs||[]).forEach(s=>{
+      const l = pct(s.ini_min), w = Math.max(0, pct(s.fin_min)-l);
+      // "asomo": si este hito se solapa con el siguiente (llegó pasado el horario de
+      // arranque del que sigue), se dibuja SIN recortar en altura (más alto) y por
+      // detrás (z más bajo) -- el que sigue, dibujado encima a la altura normal, deja
+      // ver un borde asomando arriba/abajo en la zona de solape.
+      const inset = s.peek ? 0 : 2;
+      const div = el('div');
+      div.style.cssText = 'position:absolute;top:'+inset+'px;bottom:'+inset+'px;'+
+        'left:calc('+l.toFixed(2)+'% + 1px);width:calc('+w.toFixed(2)+'% - 2px);'+
+        'background:'+s.color+';border-radius:3px;z-index:'+s.z+';cursor:default';
+      let atraso;
+      if(s.desv_min==null) atraso = 'Sin meta definida';
+      else if(s.desv_min>0) atraso = 'Atraso: '+s.desv_min+'′';
+      else if(s.desv_min<0) atraso = 'Adelanto: '+Math.abs(s.desv_min)+'′';
+      else atraso = 'Sin atraso (a tiempo)';
+      div.title = s.nombre+' · '+(s.area||'Sin área')+'\nEnviado a las '+s.real+'\n'+atraso;
+      track.appendChild(div);
+    });
+    grid.appendChild(track);
+    filas.push({el: track, segs: d.segs||[]});
+
+    const cierre = el('div'); cierre.className='mono'; cierre.textContent=d.cierre;
+    cierre.style.cssText='font-size:11.5px;font-weight:600;text-align:right;grid-column:3;grid-row:'+r+';align-self:center';
+    grid.appendChild(cierre);
+
+    const desv = el('div'); desv.className='mono'; desv.textContent=d.desv;
+    desv.style.cssText='font-size:11px;font-weight:600;text-align:right;color:'+col(d.estado)+';grid-column:4;grid-row:'+r+';align-self:center';
+    grid.appendChild(desv);
+  });
+
+  // Líneas de referencia (las etiquetas ya se dibujaron en la cabecera): overlay que
+  // abarca desde el FIN de la cabecera hasta la última fila de días.
+  const refOverlay = el('div','position:relative;pointer-events:none');
+  refOverlay.style.gridColumn='2'; refOverlay.style.gridRow='1 / '+(dias.length+2);
+  (cr.referencias||[]).forEach(r=>{
+    const x = pct(r.min);
+    refOverlay.appendChild(el('div','position:absolute;top:'+HEADER_H+'px;bottom:0;left:'+x.toFixed(2)+'%;border-left:1px dashed var(--line2)'));
+  });
+  grid.appendChild(refOverlay);
+
+  // Crosshair interactivo: al mover el mouse sobre el área de las barras, una línea
+  // vertical delgada sigue el cursor y un tooltip arriba muestra la hora (según la
+  // posición X, mapeada al eje) y qué hitos están activos en ESE momento para la fila
+  // (día) que el mouse esté sobrevolando (según la posición Y). pointer-events:none en
+  // el overlay para no tapar los tooltips nativos (title=...) de cada barra.
+  const hoverOverlay = el('div','position:relative;pointer-events:none');
+  hoverOverlay.style.gridColumn='2'; hoverOverlay.style.gridRow='1 / '+(dias.length+2);
+  const hoverLine = el('div','position:absolute;top:0;bottom:0;width:1px;background:var(--ink);display:none;z-index:60');
+  const hoverBox = el('div','position:absolute;top:0;transform:translate(-50%,-100%);margin-top:-6px;'+
+    'background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:5px 10px;display:none;'+
+    'font:500 10.5px "IBM Plex Mono",monospace;color:var(--ink);white-space:nowrap;z-index:61;text-align:center;'+
+    'box-shadow:0 6px 16px rgba(0,0,0,.3)');
+  hoverOverlay.appendChild(hoverLine); hoverOverlay.appendChild(hoverBox);
+  grid.appendChild(hoverOverlay);
+
+  const ocultarCrosshair = () => { hoverLine.style.display='none'; hoverBox.style.display='none'; };
+  grid.addEventListener('mousemove', (e) => {
+    const orect = hoverOverlay.getBoundingClientRect();
+    if(orect.width<=0 || e.clientX<orect.left || e.clientX>orect.right || e.clientY<orect.top || e.clientY>orect.bottom){
+      ocultarCrosshair(); return;
+    }
+    const relX = Math.max(0, Math.min(orect.width, e.clientX - orect.left));
+    const minuto = eje0 + (relX/orect.width)*(eje1-eje0);
+    const fila = filas.find(f => { const r=f.el.getBoundingClientRect(); return e.clientY>=r.top && e.clientY<=r.bottom; });
+    const activos = fila ? fila.segs.filter(s => minuto>=s.ini_min && minuto<=s.fin_min).map(s=>s.nombre) : [];
+    const h = Math.floor(minuto/60), m = Math.round(minuto%60);
+    const horaTxt = String(h).padStart(2,'0')+':'+String(((m%60)+60)%60).padStart(2,'0');
+    let html = '';
+    if(fila) html += '<div style="color:var(--ink2);margin-bottom:2px">'+(activos.length?activos.map(esc).join(' · '):'Sin actividad')+'</div>';
+    html += '<div style="font-weight:700">'+horaTxt+'</div>';
+    hoverBox.innerHTML = html;
+    hoverLine.style.left = relX+'px'; hoverLine.style.display='block';
+    hoverBox.style.left = relX+'px'; hoverBox.style.display='block';
+  });
+  grid.addEventListener('mouseleave', ocultarCrosshair);
+
+  p.appendChild(grid); c.appendChild(p);
+}
+
+// ===== ÁREAS =====
+// Selección persistente (mientras dure la sesión de la página) de qué hito se ve en el
+// panel de tendencia de cada área. Default pedido: Distribución -> Planificación de
+// camiones; CP -> Pre-secuencia ajustada. Si el área tiene un solo hito, no hay selector.
+const AREA_HITO_SEL = {};
+const AREA_HITO_DEFAULT = {'Distribución': 'h06', 'CP': 'h04'};
+
+function estadoDurLocal(dur, meta, tol){
+  if(meta==null || dur==null) return 'sin';
+  const d = dur-meta;
+  if(d<=0) return 'ok';
+  if(d<=tol) return 'warn';
+  return 'bad';
+}
+
+function panelTendenciaArea(a, hitosArea){
+  const panel = el('div','overflow:hidden'); panel.className='panel';
+  const head = el('div','display:flex;align-items:center;gap:10px;flex-wrap:wrap'); head.className='hd';
+  head.appendChild(el('span',null,esc(a.nombre)+' · duración por día'));
+  head.appendChild(el('div','flex:1'));
+  if(!AREA_HITO_SEL[a.nombre]){
+    const def = AREA_HITO_DEFAULT[a.nombre];
+    AREA_HITO_SEL[a.nombre] = (def && hitosArea.some(h=>h.id===def)) ? def : hitosArea[0].id;
+  }
+  if(hitosArea.length>1){
+    const sel = el('select'); sel.className='inp'; sel.style.width='190px';
+    hitosArea.forEach(h=>{ const o=el('option',null,esc(h.nombre)); o.value=h.id; if(h.id===AREA_HITO_SEL[a.nombre]) o.selected=true; sel.appendChild(o); });
+    sel.onchange = e => { AREA_HITO_SEL[a.nombre]=e.target.value; render(); };
+    head.appendChild(sel);
+  } else {
+    head.appendChild(el('span','font:500 11px IBM Plex Sans;color:var(--ink2)', esc(hitosArea[0].nombre)));
+  }
+  panel.appendChild(head);
+
+  const hitoId = AREA_HITO_SEL[a.nombre];
+  const serieCompleta = (IND.duraciones_hito||{})[hitoId] || [];
+  const hitoObj = hitosArea.find(h=>h.id===hitoId) || {};
+  const metaMin = hitoObj.dur_meta_min, tolMin = hitoObj.tol;
+  const serie = serieCompleta.filter(x=>x.dur_min!=null);
+
+  const body = el('div','padding:6px 16px 14px');
+  if(!serie.length){
+    body.appendChild(el('div','font:400 11.5px IBM Plex Sans;color:var(--ink3);padding:10px 0','Sin datos históricos todavía para este hito.'));
+    panel.appendChild(body); return panel;
+  }
+  const maxVal = Math.max(metaMin||0, ...serie.map(x=>x.dur_min)) * 1.15 || 1;
+  const rowsGrid = el('div','display:grid;grid-template-columns:52px 1fr 74px;column-gap:10px;row-gap:6px;position:relative');
+  serie.forEach((x,i)=>{
+    const r = i+1;
+    const lbl = el('div'); lbl.className='mono'; lbl.textContent=x.fecha.slice(5).replace('-','/');
+    lbl.style.cssText='font-size:10.5px;color:var(--ink3);grid-column:1;grid-row:'+r+';align-self:center';
+    rowsGrid.appendChild(lbl);
+    const track = el('div','position:relative;height:14px');
+    track.style.gridColumn='2'; track.style.gridRow=String(r); track.style.alignSelf='center';
+    const s = estadoDurLocal(x.dur_min, metaMin, tolMin);
+    track.appendChild(el('div','position:absolute;top:0;bottom:0;left:0;width:'+(Math.max(0,Math.min(100,x.dur_min/maxVal*100))).toFixed(2)+'%;background:'+band(s)+';border-radius:3px'));
+    rowsGrid.appendChild(track);
+    const val = el('div'); val.className='mono'; val.textContent=x.dur;
+    val.style.cssText='font-size:11px;font-weight:600;color:'+col(s)+';grid-column:3;grid-row:'+r+';align-self:center;text-align:right';
+    rowsGrid.appendChild(val);
+  });
+  if(metaMin!=null){
+    const refOv = el('div','position:relative;pointer-events:none');
+    refOv.style.gridColumn='2'; refOv.style.gridRow='1 / '+(serie.length+1);
+    refOv.appendChild(el('div','position:absolute;top:0;bottom:0;left:'+(Math.max(0,Math.min(100,metaMin/maxVal*100))).toFixed(2)+'%;width:0;border-left:1.5px solid var(--bad)'));
+    rowsGrid.appendChild(refOv);
+  }
+  body.appendChild(rowsGrid);
+  if(metaMin!=null) body.appendChild(el('div','margin-top:10px;font:500 10px IBM Plex Mono;color:var(--ink3)','┊ línea roja = meta ('+fmtDurMin(metaMin)+')'));
+  panel.appendChild(body);
+  return panel;
+}
+
+function renderAreas(){
+  const c = $('#tab-areas'); c.innerHTML='';
+  const wrap = el('div','display:flex;flex-direction:column;gap:var(--pad)');
+
+  const grid = el('div','display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--pad)');
+  (IND.areas||[]).forEach(a=>{
+    const card = el('div','padding:14px 15px'); card.className='panel';
+    card.appendChild(el('div','display:flex;align-items:center;gap:9px;margin-bottom:12px',
+      '<span style="width:9px;height:9px;border-radius:2px;background:'+a.color+';display:block"></span>'+
+      '<span style="font:600 13px IBM Plex Sans;letter-spacing:-.1px">'+esc(a.nombre)+'</span><span style="flex:1"></span>'+
+      '<span class="chip" style="background:'+chip(a.estado)+';color:'+col(a.estado)+'">'+esc(etiq(a.estado).toUpperCase())+'</span>'));
+    card.appendChild(el('div','display:flex;align-items:baseline;gap:8px;margin-bottom:10px',
+      '<span class="mono" style="font-size:26px;line-height:1;letter-spacing:-1px">'+a.cumpl+'%</span>'+
+      '<span style="font:400 10.5px IBM Plex Sans;color:var(--ink3)">cumplimiento SLA</span>'));
+    card.appendChild(el('div','height:6px;border-radius:4px;background:var(--panel3);overflow:hidden;margin-bottom:12px',
+      '<div style="height:100%;width:'+a.cumpl+'%;background:'+a.color+';border-radius:4px"></div>'));
+    card.appendChild(el('div','display:grid;grid-template-columns:1fr 1fr;gap:9px 12px',
+      '<div style="border-top:1px solid var(--line);padding-top:7px"><div class="lbl" style="margin-bottom:3px">Hitos a cargo</div><div class="mono" style="font-size:13px;font-weight:600">'+a.n_hitos+'</div></div>'+
+      '<div style="border-top:1px solid var(--line);padding-top:7px"><div class="lbl" style="margin-bottom:3px">Estado</div><div class="mono" style="font-size:13px;font-weight:600;color:'+col(a.estado)+'">'+esc(etiq(a.estado))+'</div></div>'));
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+
+  // Tendencia de duración por día, un panel por área (con selector de hito)
+  const grid2 = el('div','display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--pad)');
+  (IND.areas||[]).forEach(a=>{
+    const hitosArea = (IND.hitos||[]).filter(h=>(h.area||'Sin área')===a.nombre);
+    if(!hitosArea.length) return;
+    grid2.appendChild(panelTendenciaArea(a, hitosArea));
+  });
+  wrap.appendChild(grid2);
+
+  c.appendChild(wrap);
+}
+
+// ===== CONFIGURACIÓN =====
+// Borrador editable de la maestra de hitos: se clona DATA.maestra_hitos al entrar a la
+// tab (o tras guardar/recargar) y se muta directamente desde los inputs; "Guardar" lo
+// postea entero a /api/maestra_hitos (mismo patrón "mantenedor" que Centralizado).
+let HITOS_DRAFT = null;
+function draftProc(){
+  if(!HITOS_DRAFT) HITOS_DRAFT = JSON.parse(JSON.stringify(DATA.maestra_hitos||{procesos:{}}));
+  if(!HITOS_DRAFT.procesos[IND.proceso_id]) HITOS_DRAFT.procesos[IND.proceso_id] = {hitos:[]};
+  return HITOS_DRAFT.procesos[IND.proceso_id];
+}
+// Borrador del calendario de feriados (junto con el sábado, define cuándo un hito con
+// origen "horario" usa su horario alternativo).
+let FESTIVOS_DRAFT = null;
+function draftFestivos(){
+  if(!FESTIVOS_DRAFT) FESTIVOS_DRAFT = (DATA.maestra_festivos && DATA.maestra_festivos.fechas || []).slice();
+  return FESTIVOS_DRAFT;
+}
+
+function renderConfig(){
+  const c = $('#tab-config'); c.innerHTML='';
+  const puede = !!CAPS.editar_maestras;
+  const proc = draftProc();
+  const cfg = DATA.config;
+  const top = el('div','display:flex;flex-direction:column;gap:var(--pad)');
+
+  // ---- Mantenedor de hitos: agregar / editar / eliminar, todos los campos ----
+  const p1 = el('div','overflow:hidden'); p1.className='panel';
+  p1.appendChild(el('div',null,'Mantenedor de hitos · '+esc(proc.nombre||''))).className='hd';
+  const body1 = el('div','padding:12px 16px');
+  const scroll1 = el('div','overflow-x:auto');
+  const t1 = el('table'); t1.style.minWidth='1360px';
+  t1.innerHTML = '<thead><tr>'+
+    '<th>#</th><th>Nombre</th><th>Área</th><th>Hora meta</th><th>Dur. objetivo (min)</th>'+
+    '<th>Tolerancia (min)</th><th>Origen (arranca el reloj)</th><th>Remitentes (; separados)</th>'+
+    '<th>Asunto contiene</th><th>Carpeta Outlook</th><th>Nota</th><th></th>'+
+    '</tr></thead>';
+  const tb1 = el('tbody');
+  const hitosOrd = (proc.hitos||[]).slice().sort((a,b)=>(a.orden||0)-(b.orden||0));
+  hitosOrd.forEach((h, idx)=>{
+    h.identificacion = h.identificacion || {};
+    const tr = el('tr');
+    const mkInput = (val, onchange, w, type) => {
+      const i = el('input'); i.className='inp'; i.style.width=w||'80px'; i.type=type||'text';
+      i.value = val==null?'':val; i.disabled=!puede; i.oninput = e => onchange(e.target.value);
+      return i;
+    };
+    let td = el('td'); td.className='mono'; td.style.cssText='color:var(--ink3);font-size:11px'; td.textContent=String(idx+1).padStart(2,'0'); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.nombre, v=>h.nombre=v, '150px')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.area, v=>h.area=v, '110px')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.meta, v=>h.meta=v, '98px', 'time')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.dur_meta_min, v=>h.dur_meta_min=v?Number(v):null, '60px', 'number')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.tol_min, v=>h.tol_min=v?Number(v):null, '60px', 'number')); tr.appendChild(td);
+    // Origen: "Inicio del proceso" | otro hito (permite paralelo) | horario variable
+    // (hora fija que cambia semana / sábado-festivo, ej. Preventa 17:30 / 14:00).
+    td = el('td','min-width:170px');
+    const sel = el('select'); sel.className='inp'; sel.style.width='170px'; sel.disabled=!puede;
+    const optI = el('option',null,'Inicio del proceso'); optI.value='inicio'; sel.appendChild(optI);
+    hitosOrd.forEach(h2=>{ if(h2.id===h.id) return; const o=el('option',null,esc(h2.nombre||h2.id)); o.value=h2.id; sel.appendChild(o); });
+    const optH = el('option',null,'Horario variable (día)'); optH.value='horario'; sel.appendChild(optH);
+    sel.value = h.origen || 'inicio';
+    sel.onchange = e => {
+      h.origen = e.target.value;
+      if(h.origen==='horario' && !h.origen_horario) h.origen_horario = {semana:'', sabado_festivo:''};
+      renderConfig();
+    };
+    td.appendChild(sel);
+    if(h.origen==='horario'){
+      h.origen_horario = h.origen_horario || {semana:'', sabado_festivo:''};
+      const wrap = el('div','display:flex;gap:5px;margin-top:5px');
+      const mkTime = (val, onchange) => { const i=el('input'); i.type='time'; i.className='inp'; i.style.width='78px'; i.value=val||''; i.disabled=!puede; i.oninput=e=>onchange(e.target.value); return i; };
+      const g1 = el('div',null,'<div style="font:400 9px IBM Plex Mono;color:var(--ink3);margin-bottom:2px">SEMANA</div>');
+      g1.appendChild(mkTime(h.origen_horario.semana, v=>h.origen_horario.semana=v));
+      const g2 = el('div',null,'<div style="font:400 9px IBM Plex Mono;color:var(--ink3);margin-bottom:2px">SÁB/FEST.</div>');
+      g2.appendChild(mkTime(h.origen_horario.sabado_festivo, v=>h.origen_horario.sabado_festivo=v));
+      wrap.appendChild(g1); wrap.appendChild(g2);
+      td.appendChild(wrap);
+    }
+    tr.appendChild(td);
+    // Remitentes: lista separada por ;
+    td = el('td');
+    const remInp = el('input'); remInp.className='inp'; remInp.style.width='210px'; remInp.disabled=!puede;
+    remInp.value = (h.identificacion.remitentes||[]).join('; ');
+    remInp.oninput = e => { h.identificacion.remitentes = e.target.value.split(';').map(s=>s.trim()).filter(Boolean); };
+    td.appendChild(remInp); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.identificacion.asunto_contiene, v=>h.identificacion.asunto_contiene=v, '220px')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.identificacion.carpeta, v=>h.identificacion.carpeta=v, '140px')); tr.appendChild(td);
+    td=el('td'); td.appendChild(mkInput(h.identificacion.nota, v=>h.identificacion.nota=v, '200px')); tr.appendChild(td);
+    td = el('td');
+    if(puede){
+      const del = el('button','padding:4px 9px;height:26px','✕'); del.className='btn';
+      del.onclick = () => { proc.hitos = proc.hitos.filter(x=>x.id!==h.id); renderConfig(); };
+      td.appendChild(del);
+    }
+    tr.appendChild(td);
+    tb1.appendChild(tr);
+  });
+  t1.appendChild(tb1); scroll1.appendChild(t1); body1.appendChild(scroll1);
+  if(puede){
+    const acts1 = el('div','display:flex;gap:8px;margin-top:12px');
+    const addBtn = el('button',null,'+ Agregar hito'); addBtn.className='btn';
+    addBtn.onclick = () => {
+      let n=1; const ids=(proc.hitos||[]).map(h=>h.id);
+      while(ids.includes('h'+String(n).padStart(2,'0'))) n++;
+      const maxOrden = Math.max(0, ...(proc.hitos||[]).map(h=>h.orden||0));
+      proc.hitos = proc.hitos || [];
+      proc.hitos.push({id:'h'+String(n).padStart(2,'0'), nombre:'Nuevo hito', corto:'Nuevo',
+        area:'', orden:maxOrden+1, meta:'', dur_meta_min:null, tol_min:null, origen:'inicio',
+        identificacion:{carpeta:'', remitentes:[], asunto_contiene:'', seleccion_dia:'ultimo',
+                        timestamp:'recepcion', nota:''}});
+      renderConfig();
+    };
+    const save1 = el('button','flex:1','Guardar mantenedor de hitos'); save1.className='btn pri'; save1.style.height='34px'; save1.onclick=guardarHitos;
+    acts1.appendChild(addBtn); acts1.appendChild(save1);
+    body1.appendChild(acts1);
+  }
+  p1.appendChild(body1); top.appendChild(p1);
+
+  // Panel inferior: correo / semáforo / acciones -- en fila en pantallas anchas
+  const grid = el('div','display:flex;flex-wrap:wrap;gap:var(--pad);align-items:flex-start');
+  const rcol = el('div','flex:1;min-width:320px;max-width:520px;display:flex;flex-direction:column;gap:var(--pad)');
+
+  // Recolección desde correo
+  const p2 = el('div','overflow:hidden'); p2.className='panel';
+  p2.appendChild(el('div',null,'Recolección desde correo')).className='hd';
+  const body2 = el('div','padding:14px 16px;display:flex;flex-direction:column;gap:13px');
+  const campos = [
+    ['buzon','Buzón monitoreado','Casilla desde la que se extraen los hitos'],
+    ['intervalo_min','Intervalo de actualización (min)','Ejecución desatendida (Task Scheduler)'],
+    ['ventana','Ventana horaria (HH:MM–HH:MM)','Fuera de rango se ignoran los correos'],
+    ['retencion_dias','Retención del histórico (días)','Días conservados para análisis'],
+  ];
+  campos.forEach(([k,label,hint])=>{
+    const row = el('div','display:flex;align-items:center;gap:12px');
+    row.appendChild(el('div','flex:1;min-width:0','<div style="font:500 11.5px IBM Plex Sans">'+label+'</div><div style="font:400 10.5px/1.4 IBM Plex Sans;color:var(--ink3)">'+hint+'</div>'));
+    const inp = el('input'); inp.className='inp'; inp.style.width='170px'; inp.disabled=!puede; inp.dataset.k=k;
+    inp.value = k==='ventana' ? (cfg.ventana||[]).join('–') : (cfg[k]!=null?cfg[k]:'');
+    row.appendChild(inp); body2.appendChild(row);
+  });
+  // toggles
+  const toggles = [['hallazgos','Detección automática de hallazgos','Genera oportunidades de mejora sobre el histórico'],
+                   ['alerta','Alerta al superar el SLA','Correo a jefes de área al momento de la desviación'],
+                   ['festivos','Excluir festivos y fines de semana','No se consideran en promedios ni tendencias'],
+                   ['publicar','Publicación en línea','Expone el tablero tras cada corrida']];
+  toggles.forEach(([k,label,hint])=>{
+    const on = !!(cfg.toggles||{})[k];
+    const row = el('div','display:flex;align-items:center;gap:12px;padding-top:11px;border-top:1px solid var(--line)');
+    row.appendChild(el('div','flex:1','<div style="font:500 11.5px IBM Plex Sans">'+label+'</div><div style="font:400 10.5px/1.4 IBM Plex Sans;color:var(--ink3)">'+hint+'</div>'));
+    const sw = el('div','width:38px;height:21px;border-radius:11px;background:'+(on?'var(--accent)':'var(--line2)')+';padding:2px;flex:none;display:flex;justify-content:'+(on?'flex-end':'flex-start'));
+    sw.appendChild(el('span','width:17px;height:17px;border-radius:50%;background:#fff;display:block'));
+    sw.dataset.k=k; sw.dataset.on=on?'1':'0';
+    if(puede) sw.onclick=()=>{ const nv=sw.dataset.on!=='1'; sw.dataset.on=nv?'1':'0'; sw.style.background=nv?'var(--accent)':'var(--line2)'; sw.style.justifyContent=nv?'flex-end':'flex-start'; };
+    row.appendChild(sw); body2.appendChild(row);
+  });
+  if(puede){
+    const acts = el('div','display:flex;gap:8px;margin-top:6px');
+    const save = el('button','flex:1','Guardar configuración'); save.className='btn pri'; save.style.height='34px'; save.onclick=guardarConfig;
+    acts.appendChild(save); body2.appendChild(acts);
+  }
+  p2.appendChild(body2); rcol.appendChild(p2);
+
+  // Semáforo y umbrales
+  const p3 = el('div','overflow:hidden'); p3.className='panel';
+  p3.appendChild(el('div',null,'Semáforo y umbrales')).className='hd';
+  const body3 = el('div','padding:14px 16px;display:flex;flex-direction:column;gap:11px');
+  const tol = cfg.umbral_riesgo_min||15;
+  [['En meta · dentro de la hora objetivo','≤ 0 min','ok'],
+   ['En riesgo · dentro de la tolerancia','1 – '+tol+' min','warn'],
+   ['Fuera de SLA · requiere explicación','> '+tol+' min','bad']].forEach(([label,rango,s])=>{
+    body3.appendChild(el('div','display:flex;align-items:center;gap:11px',
+      '<i style="width:10px;height:10px;border-radius:3px;background:'+col(s)+';flex:none"></i>'+
+      '<span style="flex:1;font:400 11.5px IBM Plex Sans">'+label+'</span>'+
+      '<span class="mono" style="font-size:11.5px;font-weight:600;color:var(--ink2)">'+rango+'</span>'));
+  });
+  p3.appendChild(body3); rcol.appendChild(p3);
+
+  // Calendario de feriados (junto con el sábado, define el horario alternativo de
+  // los hitos con origen "horario", ej. Preventa).
+  const p5 = el('div','overflow:hidden'); p5.className='panel';
+  p5.appendChild(el('div',null,'Feriados')).className='hd';
+  const body5 = el('div','padding:14px 16px;display:flex;flex-direction:column;gap:10px');
+  body5.appendChild(el('div','font:400 10.5px/1.4 IBM Plex Sans;color:var(--ink3)',
+    'Fechas (además del sábado) en que los hitos con horario variable usan su hora alternativa.'));
+  const fechas = draftFestivos();
+  const listaF = el('div','display:flex;flex-direction:column;gap:6px');
+  function pintarFestivos(){
+    listaF.innerHTML='';
+    fechas.forEach((f,i)=>{
+      const row = el('div','display:flex;align-items:center;gap:8px');
+      const inp = el('input'); inp.type='date'; inp.className='inp'; inp.style.width='150px'; inp.value=f; inp.disabled=!puede;
+      inp.oninput = e => { fechas[i]=e.target.value; };
+      row.appendChild(inp);
+      if(puede){ const del=el('button','padding:4px 9px;height:26px','✕'); del.className='btn'; del.onclick=()=>{ fechas.splice(i,1); pintarFestivos(); }; row.appendChild(del); }
+      listaF.appendChild(row);
+    });
+  }
+  pintarFestivos();
+  body5.appendChild(listaF);
+  if(puede){
+    const acts5 = el('div','display:flex;gap:8px;margin-top:2px');
+    const add5 = el('button',null,'+ Agregar fecha'); add5.className='btn';
+    add5.onclick = () => { fechas.push(new Date().toISOString().slice(0,10)); pintarFestivos(); };
+    const save5 = el('button','flex:1','Guardar feriados'); save5.className='btn pri'; save5.style.height='34px'; save5.onclick=guardarFestivos;
+    acts5.appendChild(add5); acts5.appendChild(save5);
+    body5.appendChild(acts5);
+  }
+  p5.appendChild(body5); rcol.appendChild(p5);
+
+  // Acciones operativas
+  const p4 = el('div','padding:14px 16px;display:flex;gap:8px;flex-wrap:wrap'); p4.className='panel';
+  const bRef = el('button',null,'Actualizar (correo + snapshot)'); bRef.className='btn'; bRef.disabled=!CAPS.refrescar; bRef.onclick=actualizar;
+  const bDemo = el('button',null,'Sembrar datos demo'); bDemo.className='btn'; bDemo.disabled=!puede; bDemo.onclick=sembrarDemo;
+  const bPub = el('button',null,'Publicar'); bPub.className='btn'; bPub.disabled=!CAPS.publicar; bPub.onclick=publicar;
+  p4.appendChild(bRef); p4.appendChild(bDemo); p4.appendChild(bPub);
+  rcol.appendChild(p4);
+
+  grid.appendChild(rcol); top.appendChild(grid); c.appendChild(top);
+}
+
+// ===== Acciones =====
+async function post(url, body){
+  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const j = await r.json().catch(()=>({ok:false,error:'respuesta inválida'}));
+  if(!r.ok||j.ok===false) throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+// Aviso visible (no bloqueante) de éxito/error al guardar -- antes no había NINGÚN
+// feedback y no se sabía si el click realmente hizo algo.
+let _toastTimer = null;
+function toast(msg, tipo){
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div'); t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:999;'+
+      'padding:10px 18px;border-radius:8px;font:600 12.5px "IBM Plex Sans",sans-serif;color:#fff;'+
+      'box-shadow:0 6px 20px rgba(0,0,0,.35);transition:opacity .25s;opacity:0;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = tipo==='error' ? 'var(--bad)' : 'var(--ok)';
+  t.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>{ t.style.opacity='0'; }, 2800);
+}
+function guardarHitos(){
+  post('/api/maestra_hitos', HITOS_DRAFT).then(()=>{ HITOS_DRAFT=null; cargar(); toast('Mantenedor de hitos guardado ✓'); })
+    .catch(e=>toast('Error al guardar: '+e.message, 'error'));
+}
+function guardarFestivos(){
+  post('/api/maestra_festivos', {fechas: FESTIVOS_DRAFT||[]}).then(()=>{ FESTIVOS_DRAFT=null; cargar(); toast('Feriados guardados ✓'); })
+    .catch(e=>toast('Error al guardar: '+e.message, 'error'));
+}
+function guardarConfig(){
+  const body={toggles:{}};
+  document.querySelectorAll('#tab-config input[data-k]').forEach(i=>{
+    const k=i.dataset.k;
+    if(k==='ventana') body.ventana = i.value.split(/[–-]/).map(s=>s.trim()).slice(0,2);
+    else if(k==='intervalo_min'||k==='retencion_dias') body[k]=Number(i.value);
+    else body[k]=i.value;
+  });
+  document.querySelectorAll('#tab-config [data-k][data-on]').forEach(s=>{ body.toggles[s.dataset.k]= s.dataset.on==='1'; });
+  post('/api/config', body).then(()=>{ cargar(); toast('Configuración guardada ✓'); })
+    .catch(e=>toast('Error al guardar: '+e.message, 'error'));
+}
+function actualizar(){
+  post('/api/refresh',{dias:1}).then(()=>{ cargar(); toast('Actualizado con correo real ✓'); })
+    .catch(e=>toast('Error al actualizar: '+e.message, 'error'));
+}
+function sembrarDemo(){
+  post('/api/demo',{dias:24}).then(r=>{ cargar(); toast(r.agregadas+' capturas demo agregadas ✓'); })
+    .catch(e=>toast('Error: '+e.message, 'error'));
+}
+function publicar(){
+  toast('Publicando… puede tardar hasta un minuto');
+  post('/api/publicar',{}).then(r=>{ cargar(); toast('Publicado ✓ · '+r.url); })
+    .catch(e=>toast('Error al publicar: '+e.message, 'error'));
+}
+
+// ===== Tema =====
+function initTema(){
+  const b = $('#themeBtn');
+  const set = t => { document.documentElement.dataset.theme=t; b.textContent='TEMA · '+(t==='dark'?'OSCURO':'CLARO'); try{localStorage.setItem('tema',t)}catch(e){} };
+  let t='dark'; try{ t=localStorage.getItem('tema')||'dark'; }catch(e){}
+  set(t); b.onclick=()=>set(document.documentElement.dataset.theme==='dark'?'light':'dark');
+}
+
+initTema(); cargar();
+</script>
+</body>
+</html>
